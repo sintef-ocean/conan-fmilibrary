@@ -1,0 +1,168 @@
+From a59c6d32b1b09f6f83667cdff17ec4c556c2fe7f Mon Sep 17 00:00:00 2001
+From: Joakim Haugen <joakim.haugen@sintef.no>
+Date: Wed, 10 Apr 2024 12:16:31 +0200
+Subject: [PATCH 1/2] Conanize build scripts
+
+---
+ CMakeLists.txt                  |  7 ++++---
+ Config.cmake/fmixml.cmake       |  7 +++++--
+ Config.cmake/fmizip.cmake       | 11 +++++++----
+ Config.cmake/runtime_test.cmake | 10 +++++-----
+ 4 files changed, 21 insertions(+), 14 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3f60635..8018d16 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -46,7 +46,7 @@ set_property(GLOBAL PROPERTY PROPERTYPREDEFINED_TARGETS_FOLDER  Global)
+ set(CMAKE_SOURCE_DIR ${FMILibrary_SOURCE_DIR})
+ set(CMAKE_BINARY_DIR ${FMILibrary_BINARY_DIR})
+ 
+-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/Config.cmake)
++list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/Config.cmake)
+ 
+ # User configuration options and parameters
+ set(FMILIB_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/../install CACHE PATH "Prefix prepended to install directories")
+@@ -282,6 +282,7 @@ include(fmizlib)
+ include(fmizip)
+ include(fmiimport)
+ if(FMILIB_BUILD_TESTS)
++    enable_testing()
+     include(runtime_test)
+     # Configuration depends on values set in all the different test*.cmake files,
+     # so can't be done until here.
+@@ -291,7 +292,7 @@ if(FMILIB_BUILD_TESTS)
+     )
+ endif()
+ 
+-set(FMILIB_SHARED_SUBLIBS fmixml fmizip fmicapi expat minizip zlib c99snprintf)
++set(FMILIB_SHARED_SUBLIBS fmixml fmizip fmicapi c99snprintf)
+ set(FMILIB_SUBLIBS fmiimport jmutils ${FMILIB_SHARED_SUBLIBS})
+ # XXX: Unclear why we create intermediate sublibs instead of just giving everything as source.
+ # Probably also wouldn't get problems with using PRIVATE/PUBLIC on linking sublibs on Windows.
+@@ -462,7 +463,7 @@ if(FMILIB_GENERATE_DOXYGEN_DOC)
+ 
+     set(DOXYFILE_STRIP_FROM_PATH "${CMAKE_SOURCE_DIR}")
+ 
+-    set(CMAKE_MODULE_PATH ${FMILIB_THIRDPARTYLIBS}/CMakeModules)
++    list(APPEND CMAKE_MODULE_PATH ${FMILIB_THIRDPARTYLIBS}/CMakeModules)
+ 
+     include(UseDoxygen/UseDoxygen)
+ endif(FMILIB_GENERATE_DOXYGEN_DOC)
+diff --git a/Config.cmake/fmixml.cmake b/Config.cmake/fmixml.cmake
+index 5cb743f..504a3f6 100644
+--- a/Config.cmake/fmixml.cmake
++++ b/Config.cmake/fmixml.cmake
+@@ -179,6 +179,7 @@ set(FMIXMLSOURCE
+     src/FMI3/fmi3_xml_terminals_and_icons.c
+ )
+ 
++if(FALSE)
+ include(ExternalProject)
+ 
+ # The *_POSTFIX variables are set because it makes it easier to determine the name of
+@@ -265,6 +266,9 @@ endif()
+ 
+ set(EXPAT_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/ExpatEx/install/include)
+ 
++endif()
++find_package(expat CONFIG REQUIRED)
++
+ PREFIXLIST(FMIXMLSOURCE  ${FMIXMLDIR}/)
+ PREFIXLIST(FMIXMLHEADERS ${FMIXMLDIR}/)
+ 
+@@ -282,12 +286,11 @@ if(MSVC)
+     target_compile_definitions(fmixml PUBLIC XML_STATIC)
+ endif()
+ target_link_libraries(fmixml
+-    PRIVATE expat
++    PRIVATE expat::expat
+     PUBLIC  jmutils
+ )
+ target_include_directories(fmixml
+     PRIVATE
+-        ${EXPAT_INCLUDE_DIRS}
+         ${FMILIB_THIRDPARTYLIBS}/FMI/
+         ${FMIXMLGENDIR}/FMI1
+         ${FMIXMLGENDIR}/FMI2
+diff --git a/Config.cmake/fmizip.cmake b/Config.cmake/fmizip.cmake
+index dc83c99..1a68a0f 100644
+--- a/Config.cmake/fmizip.cmake
++++ b/Config.cmake/fmizip.cmake
+@@ -18,26 +18,29 @@ include(jmutil)
+ 
+ # set(DOXYFILE_EXTRA_SOURCES "${DOXYFILE_EXTRA_SOURCES} \"${FMIZIPDIR}/include\"")
+ 
+-add_subdirectory(Config.cmake/Minizip)
+-
+ set(FMIZIPSOURCE
+     ${FMIZIPDIR}/src/fmi_zip_unzip.c
+     ${FMIZIPDIR}/src/fmi_zip_zip.c
++    ${FMIZIPDIR}/src/minizip.c
++    ${FMIZIPDIR}/src/miniunz.c
+ )
+ 
+ set(FMIZIPHEADERS
+     ${FMIZIPDIR}/include/FMI/fmi_zip_unzip.h
+     ${FMIZIPDIR}/include/FMI/fmi_zip_zip.h
++    ${FMIZIPDIR}/include/minizip.h
++    ${FMIZIPDIR}/include/miniunz.h
+ )
+ 
++find_package(minizip CONFIG REQUIRED)
++
+ add_library(fmizip STATIC ${FMIZIPSOURCE} ${FMIZIPHEADERS})
+ target_link_libraries(fmizip
+-    PRIVATE minizip
++    PRIVATE minizip::minizip
+     PUBLIC  jmutils
+ )
+ target_include_directories(fmizip
+     PRIVATE
+-        ${FMILIB_THIRDPARTYLIBS}/Minizip/minizip
+         ${FMILIB_THIRDPARTYLIBS}/FMI
+     PUBLIC
+         ${FMILIB_CONFIG_INCLUDE_DIR}
+diff --git a/Config.cmake/runtime_test.cmake b/Config.cmake/runtime_test.cmake
+index 5d00e9f..92eaa7d 100644
+--- a/Config.cmake/runtime_test.cmake
++++ b/Config.cmake/runtime_test.cmake
+@@ -43,10 +43,10 @@ add_library(fmi_testutil STATIC ${FMIL_TEST_DIR}/fmi_testutil.c)
+ target_link_libraries(fmi_testutil PRIVATE jmutils)  # Uses jm_vector
+ if(FMILIB_BUILD_SHARED_LIB AND (FMILIB_LINK_TEST_TO_SHAREDLIB OR NOT FMILIB_BUILD_STATIC_LIB))
+     set(FMILIBFORTEST fmilib_shared fmi_testutil)
+-    target_link_libraries(fmi_testutil PRIVATE fmilib_shared)
++    target_link_libraries(fmi_testutil PRIVATE fmilib_shared minizip::minizip expat::expat)
+ else()
+     set(FMILIBFORTEST fmilib fmi_testutil)
+-    target_link_libraries(fmi_testutil PRIVATE fmilib)
++    target_link_libraries(fmi_testutil PRIVATE fmilib minizip::minizip expat::expat)
+ endif()
+ 
+ # Convenience: By setting this to PUBLIC, all tests that link with fmi_testutil
+@@ -72,7 +72,7 @@ endif()
+ 
+ #Create function that zips the dummy FMUs
+ add_executable(compress_test_fmu_zip ${FMIL_TEST_DIR}/compress_test_fmu_zip.c)
+-target_link_libraries(compress_test_fmu_zip fmizip)
++target_link_libraries(compress_test_fmu_zip fmizip minizip::minizip)
+ target_include_directories(compress_test_fmu_zip PRIVATE ${FMIL_TEST_INCLUDE_DIRS})
+ 
+ #Path to the executable
+@@ -150,11 +150,11 @@ function(compress_fmu OUTPUT_FOLDER_T MODEL_IDENTIFIER_T FILE_NAME_CS_ME_EXT_T T
+ endfunction(compress_fmu)
+ 
+ add_executable(fmi_zip_zip_test ${FMIL_TEST_DIR}/fmi_zip_zip_test.c )
+-target_link_libraries(fmi_zip_zip_test fmizip)
++target_link_libraries(fmi_zip_zip_test fmizip minizip::minizip)
+ target_include_directories(fmi_zip_zip_test PRIVATE ${FMIL_TEST_INCLUDE_DIRS})
+ 
+ add_executable(fmi_zip_unzip_test ${FMIL_TEST_DIR}/fmi_zip_unzip_test.c )
+-target_link_libraries(fmi_zip_unzip_test fmizip)
++target_link_libraries(fmi_zip_unzip_test fmizip minizip::minizip)
+ target_include_directories(fmi_zip_unzip_test PRIVATE ${FMIL_TEST_INCLUDE_DIRS})
+ 
+ add_executable(fmi_import_test
+-- 
+2.39.2
+
