@@ -60,7 +60,7 @@ class PackageConan(ConanFile):
         if Version(self.version).major > 2:
             self.requires("fmi3/3.0.1")
         self.requires("expat/2.6.2")
-        self.requires("minizip/1.3.1")
+        self.requires("minizip/[>=1.2.11 <2]")
         self.requires("zlib/[>=1.2.11 <2]")
         # c99_snprintf -> should be externalised
 
@@ -130,7 +130,8 @@ class PackageConan(ConanFile):
         cmake.configure()
         cmake.build()
 
-        if not self.conf.get("tools.build:skip_test", default=True):
+        if not self.conf.get("tools.build:skip_test", default=True) and self.options.with_fmus:
+            # Tests will now work without fmus
             env = Environment()
             env.define("CTEST_OUTPUT_ON_FAILURE", "ON")
             with env.vars(self).apply():
