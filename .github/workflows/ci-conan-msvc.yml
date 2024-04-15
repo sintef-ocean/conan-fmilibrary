@@ -21,7 +21,7 @@ jobs:
         profile: [msvc17]
         compiler_version: [192, 193]
         with_fmus: ["with_fmus=True", "with_fmus=False"]
-        channel: ["${{ (github.head_ref || github.ref_name) == 'master' && 'stable' || 'testing' }}"]
+        channel: ["${{ (github.head_ref || github.ref_name) == 'main' && 'stable' || 'testing' }}"]
     steps:
       - uses: actions/checkout@v4
       - name: Install prerequisites
