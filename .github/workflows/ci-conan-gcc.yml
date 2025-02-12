@@ -37,6 +37,10 @@ jobs:
           -
             linux: ubuntu:22.04
             compiler_version: 11
+        exclude:
+          -
+            compiler_version: 14
+            version: 3.0-a.3
     container:
       image: ${{ matrix.linux }}
       options: -u 0
