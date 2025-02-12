@@ -59,7 +59,7 @@ class PackageConan(ConanFile):
         self.requires("fmi2/2.0.4")
         if Version(self.version).major > 2:
             self.requires("fmi3/3.0.1")
-        self.requires("expat/2.6.2")
+        self.requires("expat/2.6.4")
         self.requires("minizip/[>=1.2.11 <2]")
         self.requires("zlib/[>=1.2.11 <2]")
         # c99_snprintf -> should be externalised

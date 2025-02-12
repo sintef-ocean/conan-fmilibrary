@@ -12,14 +12,14 @@ env:
 jobs:
   conan-with-msvc:
     name: Conan
-    runs-on: windows-2022
+    runs-on: windows-2025
     strategy:
       fail-fast: false
       matrix:
         version: [2.4.1, 3.0-a.3]
         build_type: [Debug, Release]
         profile: [msvc17]
-        compiler_version: [192, 193]
+        compiler_version: [192, 194]
         with_fmus: ["with_fmus=True", "with_fmus=False"]
         channel: ["${{ (github.head_ref || github.ref_name) == 'main' && 'stable' || 'testing' }}"]
     steps:
